@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"sort"
 
 	echo "github.com/labstack/echo/v4"
 	"github.com/tvanriel/cloudsdk/http"
@@ -18,23 +19,23 @@ var _ http.RouteGroup = (*Controller)(nil)
 type ControllerOpts struct {
 	fx.In
 
-	Logger  *zap.Logger
-	Printer *printer.Printer
-	Scanner *scan.Scanner
+	Logger   *zap.Logger
+	Printers printer.Printers
+	Scanner  *scan.Scanner
 }
 
 func NewController(o ControllerOpts) *Controller {
 	return &Controller{
-		Logger:  o.Logger.Named("web"),
-		Printer: o.Printer,
-		Scanner: o.Scanner,
+		Logger:   o.Logger.Named("web"),
+		Printers: o.Printers,
+		Scanner:  o.Scanner,
 	}
 }
 
 type Controller struct {
-	Logger  *zap.Logger
-	Printer *printer.Printer
-	Scanner *scan.Scanner
+	Logger   *zap.Logger
+	Printers printer.Printers
+	Scanner  *scan.Scanner
 }
 
 // ApiGroup implements http.RouteGroup.
@@ -47,13 +48,13 @@ func (c *Controller) Handler(g *echo.Group) {
 	g.GET("", c.index)
 	g.GET("bootstrap.min.css", c.Asset(assets.Bootstrap, "text/css"))
 	g.GET("htmx.min.js", c.Asset(assets.HTMX, "application/javascript"))
-	g.POST("print", c.print)
+	g.POST("print/:printer", c.print)
 	g.POST("scan", c.scan)
 	g.GET("scan/:id", c.scanid)
-	g.GET("print/:id", c.printid)
+	g.GET("print/:printer/:id", c.printid)
 	g.GET("scanimage/:id", c.scanimage)
 	g.GET("scanjobs", c.scanjobs)
-	g.GET("printjobs", c.printjobs)
+	g.GET("printjobs/:printer", c.printjobs)
 }
 
 func (c *Controller) Asset(x []byte, s string) echo.HandlerFunc {
@@ -70,12 +71,14 @@ func (c *Controller) Version() string {
 }
 
 func (c *Controller) print(ctx echo.Context) error {
+	pr := c.Printers[ctx.Param("printer")]
+
 	f, h, err := ctx.Request().FormFile("file")
 	if err != nil {
 		c.Logger.Error("read form file", zap.Error(err))
 		return nil
 	}
-	job, err := c.Printer.NewJob(context.Background(), h.Filename, f)
+	job, err := pr.NewJob(context.Background(), h.Filename, f)
 	if err != nil {
 		c.Logger.Error("submit job", zap.Error(err))
 	}
@@ -86,7 +89,9 @@ func (c *Controller) print(ctx echo.Context) error {
 }
 
 func (c *Controller) printid(ctx echo.Context) error {
-	for _, j := range c.Printer.Jobs {
+	pr := c.Printers[ctx.Param("printer")]
+
+	for _, j := range pr.Jobs {
 		if j.ID == ctx.Param("id") {
 			views.PrintJob(j).Render(ctx.Request().Context(), ctx.Response().Writer)
 		}
@@ -94,7 +99,6 @@ func (c *Controller) printid(ctx echo.Context) error {
 
 	return nil
 }
-
 
 func (c *Controller) scanid(ctx echo.Context) error {
 	for _, j := range c.Scanner.Jobs {
@@ -117,7 +121,9 @@ func (c *Controller) scanimage(ctx echo.Context) error {
 }
 
 func (c *Controller) printjobs(ctx echo.Context) error {
-	if err := views.PrintJobs(c.Printer.Jobs).Render(ctx.Request().Context(), ctx.Response().Writer); err != nil {
+	pr := c.Printers[ctx.Param("printer")]
+
+	if err := views.PrintJobs(pr.Jobs).Render(ctx.Request().Context(), ctx.Response().Writer); err != nil {
 		c.Logger.Error("write printjobs response", zap.Error(err))
 	}
 
@@ -133,14 +139,21 @@ func (c *Controller) scanjobs(ctx echo.Context) error {
 }
 
 func (c *Controller) scan(ctx echo.Context) error {
-	j :=c.Scanner.NewJob(context.Background())
+	j := c.Scanner.NewJob(context.Background())
 	go j.Run()
 
 	return c.scanjobs(ctx)
 }
 
 func (c *Controller) index(ctx echo.Context) error {
-	if err := views.Index().Render(ctx.Request().Context(), ctx.Response().Writer); err != nil {
+	printers := make([]string, 0, len(c.Printers))
+	for name := range c.Printers {
+		printers = append(printers, name)
+	}
+
+	sort.Strings(printers)
+
+	if err := views.Index(printers).Render(ctx.Request().Context(), ctx.Response().Writer); err != nil {
 		c.Logger.Error("write index response", zap.Error(err))
 	}
 

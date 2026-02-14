@@ -28,33 +28,46 @@ templ Layout() {
 	</html>
 }
 
-templ Index() {
+templ Index(printers []string) {
 	@Layout() {
 		<div class="row">
 			<div class="col">
-				<div id="printjobs" hx-get="/printjobs" hx-trigger="load"></div>
-				@Print()
+			    for _, name := range printers {
+			        <div class="card my-2">
+			            <h2 class="card-header">{ name }</h2>
+			            <div class="card-body d-flex flex-column">
+                            <div id={ fmt.Sprintf("printjobs-%s", name) } hx-get={ fmt.Sprintf("/printjobs/%s", name)} hx-trigger="load"></div>
+				            @Print(name)
+				        </div>
+				    </div>
+				}
 			</div>
 			<div class="col">
-				<div id="scanjobs" hx-get="/scanjobs" hx-trigger="load"></div>
-				@Scan()
+			    <div class="card my-2">
+			        <h2 class="card-header">Scanner</h2>
+				    <div class="card-body d-flex flex-column">
+				        <div id="scanjobs" hx-get="/scanjobs" hx-trigger="load"></div>
+				        @Scan()
+				    </div>
+                </div>
 			</div>
 		</div>
 	}
 }
 
-templ Print() {
-	<div id="printer">
-    <pre id="printoutput"></pre>
-		<form hx-post="/print" hx-reload="#printjobs" hx-encoding='multipart/form-data' hx-swap="none">
-			<input type="file" name="file" class="form-control"/>
-			<button class="btn btn-primary" role="submit">Print</button>
+templ Print(name string) {
+	<div class="mt-2" id={ fmt.Sprintf("printer-%s", name) }>
+		<form hx-post={ fmt.Sprintf("/print/%s",name) } hx-reload={ fmt.Sprintf("#printjobs-%s", name) } hx-encoding='multipart/form-data' hx-swap="none">
+		    <div class="input-group">
+                <input type="file" name="file" class="form-control"/>
+                <button class="btn btn-primary" role="submit">Print</button>
+			</div>
 		</form>
 	</div>
 }
 
 templ Scan() {
-	<div id="scanner">
+	<div class="mt-2" id="scanner">
 		<button class="btn btn-primary" hx-post="/scan" hx-target="#scanjobs">
 			Scan!
 		</button>
@@ -62,7 +75,6 @@ templ Scan() {
 }
 
 templ PrintJobs(jobs []*printer.PrintJob) {
-	<h3>Printjobs: </h3>
 	<ul class="list-group">
 		if len(jobs) == 0 {
 			<li class="list-group-item list-group-item-secondary">
@@ -99,7 +111,6 @@ templ PrintJobs(jobs []*printer.PrintJob) {
 }
 
 templ ScanJobs(jobs []*scan.ScanJob) {
-	<h3>Scanjobs: </h3>
 	<ul class="list-group">
 		if len(jobs) == 0 {
 			<li class="list-group-item list-group-item-secondary">

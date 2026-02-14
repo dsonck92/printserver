@@ -14,7 +14,7 @@ import (
 type Config struct {
 	fx.Out
 
-	Printer printer.Config        `hcl:"printer,block"`
+	Printer []printer.Config      `hcl:"printer,block"`
 	Scanner scan.Config           `hcl:"scanner,block"`
 	Http    http.Configuration    `hcl:"http,block"`
 	Logging logging.Configuration `hcl:"logging,block"`

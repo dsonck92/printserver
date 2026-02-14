@@ -14,6 +14,8 @@ import (
 )
 
 type Config struct {
+	Name string `hcl:"name,label"`
+
 	LPBinary string   `hcl:"lp_binary"`
 	LPArgs   []string `hcl:"lp_args"`
 	DestDir  string   `hcl:"dest_dir"`
@@ -24,31 +26,41 @@ type PrinterOpts struct {
 
 	Logger *zap.Logger
 
-	Config Config
+	Config []Config
 }
 
 type Printer struct {
 	Logger *zap.Logger
 
-	Config Config
-	Jobs   []*PrintJob
+	LPBinary string
+	LPArgs   []string
+	DestDir  string
+
+	Jobs []*PrintJob
 }
 
-func NewPrinter(o PrinterOpts) *Printer {
+type Printers map[string]*Printer
 
-	_ = os.Mkdir(o.Config.DestDir, os.ModePerm)
+func NewPrinter(o PrinterOpts) Printers {
+	printers := make(Printers, len(o.Config))
+	for _, c := range o.Config {
+		_ = os.Mkdir(c.DestDir, os.ModePerm)
 
-	return &Printer{
-		Logger: o.Logger.Named("printer"),
-		Config: o.Config,
-
-		Jobs: []*PrintJob{},
+		printers[c.Name] = &Printer{
+			Logger:   o.Logger.Named("printer").Named(c.Name),
+			LPBinary: c.LPBinary,
+			LPArgs:   c.LPArgs,
+			DestDir:  c.DestDir,
+			Jobs:     []*PrintJob{},
+		}
 	}
+
+	return printers
 }
 
 func (p *Printer) NewJob(ctx context.Context, filename string, r io.Reader) (*PrintJob, error) {
 	jobId := uuid.Must(uuid.NewRandom()).String()
-	jobDir := filepath.Join(p.Config.DestDir, jobId)
+	jobDir := filepath.Join(p.DestDir, jobId)
 	err := os.Mkdir(jobDir, os.ModePerm)
 	if err != nil {
 		return nil, fmt.Errorf("create job dir: %w", err)
@@ -66,9 +78,9 @@ func (p *Printer) NewJob(ctx context.Context, filename string, r io.Reader) (*Pr
 		return nil, fmt.Errorf("save to-be-printed-file on disk: %w", err)
 	}
 
-	args := append(p.Config.LPArgs, fullFilename)
+	args := append(p.LPArgs, fullFilename)
 
-	cmd := exec.CommandContext(ctx, p.Config.LPBinary, args...)
+	cmd := exec.CommandContext(ctx, p.LPBinary, args...)
 
 	p.Logger.Info("command", zap.String("bin", cmd.Path), zap.Strings("args", cmd.Args))
 
