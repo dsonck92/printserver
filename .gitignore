@@ -1,0 +1,6 @@
+printserver
+.task
+tmp
+pkg/web/assets/*.js
+pkg/web/assets/*.css
+pkg/web/views/*_templ.go

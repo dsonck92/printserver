@@ -1,0 +1,7 @@
+# github.com/cosmtrek/air
+# Configuration for air compiler runner
+[build]
+pre_cmd=["templ generate"]
+exclude_regex = ["web/views/.*_templ\\.go"]
+include_ext=["templ", "go", "js", "css"]
+

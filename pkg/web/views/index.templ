@@ -1,0 +1,136 @@
+package views
+
+import "github.com/tvanriel/printserver/pkg/scan"
+import "fmt"
+import "strconv"
+import "github.com/tvanriel/printserver/pkg/printer"
+
+templ Layout() {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<link rel="stylesheet" href="/bootstrap.min.css"/>
+			<script defer src="/htmx.min.js"></script>
+			<title>Printerserver</title>
+		</head>
+		<body>
+			<div class="container">
+				<div class="row">
+					<div class="col">
+						<h1>Printerserver</h1>
+					</div>
+				</div>
+				{ children... }
+			</div>
+		</body>
+	</html>
+}
+
+templ Index() {
+	@Layout() {
+		<div class="row">
+			<div class="col">
+				<div id="printjobs" hx-get="/printjobs" hx-trigger="load"></div>
+				@Print()
+			</div>
+			<div class="col">
+				<div id="scanjobs" hx-get="/scanjobs" hx-trigger="load"></div>
+				@Scan()
+			</div>
+		</div>
+	}
+}
+
+templ Print() {
+	<div id="printer">
+    <pre id="printoutput"></pre>
+		<form hx-post="/print" hx-reload="#printjobs" hx-encoding='multipart/form-data' hx-swap="none">
+			<input type="file" name="file" class="form-control"/>
+			<button class="btn btn-primary" role="submit">Print</button>
+		</form>
+	</div>
+}
+
+templ Scan() {
+	<div id="scanner">
+		<button class="btn btn-primary" hx-post="/scan" hx-target="#scanjobs">
+			Scan!
+		</button>
+	</div>
+}
+
+templ PrintJobs(jobs []*printer.PrintJob) {
+	<h3>Printjobs: </h3>
+	<ul class="list-group">
+		if len(jobs) == 0 {
+			<li class="list-group-item list-group-item-secondary">
+				<i>No jobs</i>
+			</li>
+		} else {
+			for i, j := range jobs {
+				switch j.State {
+					case printer.StateCreated:
+						<li class="list-group-item">
+							{ strconv.Itoa(i) }. <a href={ templ.URL(fmt.Sprintf("/print/%s", j.ID)) }>{ j.ID }</a>
+						</li>
+					case printer.StateStarted:
+						<li class="list-group-item list-group-item-info">
+							{ strconv.Itoa(i) }. <a href={ templ.URL(fmt.Sprintf("/print/%s", j.ID)) }>{ j.ID }</a>
+						</li>
+					case printer.StateSucceeded:
+						<li class="list-group-item list-group-item-success">
+							{ strconv.Itoa(i) }. <a href={ templ.URL(fmt.Sprintf("/print/%s", j.ID)) }>{ j.ID }</a>
+						</li>
+					case printer.StateFailed:
+						<li class="list-group-item list-group-item-danger">
+							{ strconv.Itoa(i) }. <a href={ templ.URL(fmt.Sprintf("/print/%s", j.ID)) }>{ j.ID }</a>
+						</li>
+					default:
+						<li class="list-group-item">
+							<i>unknown state:</i>
+							{ strconv.Itoa(i) }. <a href={ templ.URL(fmt.Sprintf("/print/%s", j.ID)) }>{ j.ID }</a>
+						</li>
+				}
+			}
+		}
+	</ul>
+}
+
+templ ScanJobs(jobs []*scan.ScanJob) {
+	<h3>Scanjobs: </h3>
+	<ul class="list-group">
+		if len(jobs) == 0 {
+			<li class="list-group-item list-group-item-secondary">
+				<i>No jobs</i>
+			</li>
+		} else {
+			for i, j := range jobs {
+				switch j.State {
+					case scan.StateCreated:
+						<li class="list-group-item">
+							{ strconv.Itoa(i) }. <a href={ templ.URL(fmt.Sprintf("/scan/%s", j.ID)) }>{ j.ID }</a>
+						</li>
+					case scan.StateStarted:
+						<li class="list-group-item list-group-item-info">
+							{ strconv.Itoa(i) }. <a href={ templ.URL(fmt.Sprintf("/scan/%s", j.ID)) }>{ j.ID }</a>
+						</li>
+					case scan.StateSucceeded:
+						<li class="list-group-item list-group-item-success">
+							{ strconv.Itoa(i) }. <a href={ templ.URL(fmt.Sprintf("/scan/%s", j.ID)) }>{ j.ID }</a>
+						</li>
+					case scan.StateFailed:
+						<li class="list-group-item list-group-item-danger">
+							{ strconv.Itoa(i) }. <a href={ templ.URL(fmt.Sprintf("/scan/%s", j.ID)) }>{ j.ID }</a>
+						</li>
+					default:
+						<li class="list-group-item">
+							<i>unknown state:</i>
+							{ strconv.Itoa(i) }. <a href={ templ.URL(fmt.Sprintf("/scan/%s", j.ID)) }>{ j.ID }</a>
+						</li>
+				}
+			}
+		}
+	</ul>
+}

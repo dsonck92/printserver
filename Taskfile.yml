@@ -1,0 +1,25 @@
+version: "3"
+
+tasks:
+  templ:
+    sources:
+      - pkg/web/views/**/*.templ
+    generates:
+      - pkg/web/views/**/*_templ.go
+    cmds: 
+      - templ generate
+  fetch-assets:
+    status:
+      - test -f pkg/web/assets/htmx.min.js 
+      - test -f pkg/web/assets/bootstrap.min.css
+    cmds:
+      - wget https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js -O pkg/web/assets/htmx.min.js
+      - wget https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css -O pkg/web/assets/bootstrap.min.css
+  binary:
+    cmds:
+      - go build -ldflags="-s -w" .
+  build:
+    cmds:
+      - task: templ
+      - task: fetch-assets
+      - task: binary

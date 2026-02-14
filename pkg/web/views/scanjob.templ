@@ -1,0 +1,42 @@
+package views
+
+import "github.com/tvanriel/printserver/pkg/scan"
+import "fmt"
+import "github.com/tvanriel/printserver/pkg/printer"
+
+templ ScanJob(job *scan.ScanJob) {
+	@Layout() {
+		<p><a href="/">Back</a></p>
+		switch job.State {
+			case scan.StateCreated:
+				<p>Created - please wait</p>
+			case scan.StateStarted:
+				<p>Started - please wait</p>
+			case scan.StateFailed:
+				<p>Failed</p>
+				<pre>{ string(job.Output) }</pre>
+			case scan.StateSucceeded:
+        <p>Success</p>
+				<pre>{ string(job.Output) }</pre>
+				<img src={ templ.URL(fmt.Sprintf("/scanimage/%s", job.ID)) }/>
+		}
+	}
+}
+
+templ PrintJob(job *printer.PrintJob) {
+	@Layout() {
+		<p><a href="/">Back</a></p>
+		switch job.State {
+			case printer.StateCreated:
+				<p>Created - please wait</p>
+			case printer.StateStarted:
+				<p>Started - please wait</p>
+			case printer.StateFailed:
+				<p>Failed</p>
+				<pre>{ string(job.Output) }</pre>
+        <p>Success</p>
+			case printer.StateSucceeded:
+				<pre>{ string(job.Output) }</pre>
+		}
+	}
+}
